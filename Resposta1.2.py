@@ -1,103 +1,106 @@
 import streamlit as st
 
-st.title("🏆 Football Studio Elite")
+st.title("Football Studio PRO")
 
-if 'history' not in st.session_state:
-    st.session_state.history = []
-    st.session_state.bankroll = 200
+if 'h' not in st.session_state:
+    st.session_state.h = []
+    st.session_state.bank = 200
 
-bankroll = st.number_input("💰 Bankroll", value=st.session_state.bankroll)
+bank = st.number_input("💰 Bankroll", value=st.session_state.bank)
 
 # BOTÕES
-col1, col2, col3 = st.columns([1,1,1])
-if col1.button("🔴 **BANK**", use_container_width=True):
-    st.session_state.history.append('BANK')
+col1, col2, col3 = st.columns(3)
+if col1.button("🔴 BANK", use_container_width=True):
+    st.session_state.h.append('🔴')
     st.rerun()
-if col2.button("🔵 **PLAYER**", use_container_width=True):
-    st.session_state.history.append('PLAYER')
+if col2.button("🔵 PLAYER", use_container_width=True):
+    st.session_state.h.append('🔵')
     st.rerun()
-if col3.button("🟡 **TIE**", use_container_width=True):
-    st.session_state.history.append('TIE')
+if col3.button("🟡 TIE", use_container_width=True):
+    st.session_state.h.append('🟡')
     st.rerun()
 
-def analyze(history):
-    if len(history) < 2:
-        return {'streak': 0, 'choppy': 0, 'cockroach': False, 'suggestion': 'WAIT'}
+# HISTÓRICO EMOJIS ← RECENTE ESQUERDA
+h = st.session_state.h[-15:][::-1]
+if h:
+    st.markdown("### 📊 **← RECENTE**")
+    st.caption("   ".join(h))
+
+# ANÁLISE PADRÕES
+def analyze_patterns(hist):
+    if len(hist) < 2:
+        return {'bet': '⏳', 'amount': 0, 'pattern': 'WAIT'}
     
-    h = history[-12:]
-    last = h[-1]
+    # Recupera ordem original (mais recente no final)
+    orig_hist = hist[::-1]
+    last = orig_hist[-1]
     
     # STREAK
     streak = 1
-    for i in range(1, len(h)):
-        if len(h) > i and h[-i-1] == last:
+    for i in range(1, min(10, len(orig_hist))):
+        if orig_hist[-i-1] == last:
             streak += 1
         else:
             break
     
     # CHOPPY
     choppy = 0
-    for i in range(1, min(8, len(h))):
-        if h[-i] != h[-i-1]:
+    for i in range(1, min(8, len(orig_hist))):
+        if orig_hist[-i] != orig_hist[-i-1]:
             choppy += 1
     
-    # COCKROACH
-    cockroach = len(h) >= 3 and h[-3:] in [['BANK', 'BANK', 'PLAYER'], ['PLAYER', 'PLAYER', 'BANK']]
+    # COCKROACH BBP/PPB
+    cockroach = len(orig_hist) >= 3 and orig_hist[-3:] in [['🔴','🔴','🔵'], ['🔵','🔵','🔴']]
     
-    # SUGESTÃO
-    bet_size = bankroll * 0.01
+    amount = int(bank * 0.01)
+    
     if streak >= 6:
-        opp = 'PLAYER' if last == 'BANK' else 'BANK'
-        return {'streak': streak, 'suggestion': f"{opp} R${int(bet_size*2)}", 'dragon': True}
+        bet = '🔵' if last == '🔴' else '🔴'
+        amount = int(bank * 0.02)
+        return {'bet': bet, 'amount': amount, 'pattern': '🐲 DRAGON'}
     elif streak >= 4:
-        opp = 'PLAYER' if last == 'BANK' else 'BANK'
-        return {'streak': streak, 'suggestion': f"{opp} R${int(bet_size*1.5)}"}
+        bet = '🔵' if last == '🔴' else '🔴'
+        amount = int(bank * 0.015)
+        return {'bet': bet, 'amount': amount, 'pattern': f'🔥 STREAK {streak}'}
     elif cockroach:
-        return {'cockroach': True, 'suggestion': f"BANK R${int(bet_size*0.8)}"}
+        bet = '🔴'
+        amount = int(bank * 0.008)
+        return {'bet': bet, 'amount': amount, 'pattern': '🐛 COCKROACH'}
     elif choppy >= 5:
-        opp = 'PLAYER' if last == 'BANK' else 'BANK'
-        return {'choppy': choppy, 'suggestion': f"{opp} R${int(bet_size*0.5)}"}
+        bet = '🔵' if last == '🔴' else '🔴'
+        amount = int(bank * 0.005)
+        return {'bet': bet, 'amount': amount, 'pattern': f'🔄 CHOPPY {choppy}'}
     else:
-        opp = 'PLAYER' if last == 'BANK' else 'BANK'
-        return {'suggestion': f"{opp} R${int(bet_size)}"}
-
-# HISTÓRICO
-if st.session_state.history:
-    display_hist = st.session_state.history[-10:][::-1]
-    st.markdown("### 📊 ← RECENTE")
-    st.caption(" | ".join(display_hist))
-
-# STATS
-if st.session_state.history:
-    h10 = st.session_state.history[-10:]
-    col1, col2, col3 = st.columns(3)
-    col1.metric("🔴 BANK", h10.count('BANK'))
-    col2.metric("🔵 PLAYER", h10.count('PLAYER'))
-    col3.metric("🟡 TIE", h10.count('TIE'))
+        bet = '🔵' if last == '🔴' else '🔴'
+        return {'bet': bet, 'amount': amount, 'pattern': '➡️ NORMAL'}
 
 # SUGESTÃO PRINCIPAL
 st.markdown("---")
-st.markdown("### 🚀 **NEXT BET**")
+st.markdown("### 🎯 **APOSTA AGORA**")
 
-if len(st.session_state.history) > 0:
-    analysis = analyze(st.session_state.history)
-    st.error(f"**{analysis['suggestion']}**")
+if st.session_state.h:
+    analysis = analyze_patterns(h)
     
-    # PADRÕES
-    if 'dragon' in analysis and analysis['dragon']:
-        st.warning("🐲 **DRAGON DETECTED**")
-    elif analysis.get('streak', 0) >= 4:
-        st.info(f"🔥 **Big Road {analysis['streak']}**")
-    elif analysis.get('choppy', 0) >= 5:
-        st.info(f"🔄 **Choppy {analysis['choppy']}**")
-    elif analysis.get('cockroach', False):
-        st.success("🐛 **Cockroach**")
-
+    col1, col2, col3 = st.columns([1,4,1])
+    with col1:
+        st.markdown(f"### **{analysis['bet']}**")
+    with col2:
+        st.markdown(f"### **R${analysis['amount']}**")
+    with col3:
+        st.success(f"**{analysis['pattern']}**")
+    
+    st.caption(f"Histórico: {len(st.session_state.h)} rodadas | Stake: {analysis['amount']/bank*100:.1f}%")
 else:
-    st.info("**Clique para começar**")
+    st.info("**Clique primeiro resultado**")
 
-if st.button("🗑️ Reset"):
-    st.session_state.history = []
+# STATS
+if st.session_state.h:
+    recent = st.session_state.h[-20:]
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🔴 BANK", recent.count('🔴'))
+    col2.metric("🔵 PLAYER", recent.count('🔵'))
+    col3.metric("🟡 TIE", recent.count('🟡'))
+
+if st.button("🗑️ Clear", type="secondary"):
+    st.session_state.h = []
     st.rerun()
-
-st.caption("**Elite - Zero Errors**")
