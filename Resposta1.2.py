@@ -25,13 +25,15 @@ if "hist" not in st.session_state:
 # INPUT DE RESULTADOS
 # =============================
 st.subheader("➕ Inserir Resultado")
+
+# 🔴 Banker | 🔵 Player | 🟡 Empate
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
-    if st.button("🔴 Player"):
+    if st.button("🔴 Banker"):
         st.session_state.hist.append("🔴")
 with c2:
-    if st.button("🔵 Banker"):
+    if st.button("🔵 Player"):
         st.session_state.hist.append("🔵")
 with c3:
     if st.button("🟡 Empate"):
@@ -106,7 +108,7 @@ if len(h) >= MIN_READ:
         manip = 4
 
     # 4 Escadinha
-    elif len(u6) == 6 and u6[0]==u6[1] and u6[2]==u6[3] and u6[4]!=u6[3]:
+    elif len(u6) == 6 and u6[0] == u6[1] and u6[2] == u6[3] and u6[4] != u6[3]:
         sugestao = "⚠️ Aguardar"
         padrao = "Escadinha"
         prob = 50
@@ -196,7 +198,7 @@ if len(h) >= MIN_READ:
         prob = 52
         manip = 6
 
-    # 17 Colapso de Probabilidade
+    # 17 Colapso / 18 Fantasma
     else:
         u3 = ult(3)
         if "🟡" in u3:
@@ -205,7 +207,6 @@ if len(h) >= MIN_READ:
             prob = 0
             manip = 9
         else:
-            # 18 Fantasma
             sugestao = "❌ NÃO ENTRAR"
             padrao = "Padrão Fantasma"
             prob = 0
@@ -231,11 +232,8 @@ elif prob >= 60:
 else:
     st.warning("⚠️ Zona neutra – apenas observar")
 
-# =============================
-# REGRA DE OURO
-# =============================
 st.markdown("""
 ---
-### 🧠 REGRA ABSOLUTA
-> **Se o padrão precisa ser forçado, ele já acabou.**
+### 🧠 REGRA DE OURO
+> **Quem respeita a leitura, sobrevive ao jogo.**
 """)
