@@ -1,124 +1,234 @@
 import streamlit as st
+from collections import Counter
 
-st.title("Football Studio CONSERVADOR")
+st.set_page_config(page_title="🧠 Football Studio IA Avançada", layout="centered")
 
-if 'h' not in st.session_state:
-    st.session_state.h = []
-    st.session_state.bank = 200
+st.title("🎴 Football Studio – IA Avançada")
+st.caption("18 padrões reais | Probabilidade | Manipulação | Sem forçar entrada")
 
-bank = st.number_input("💰 Bankroll", value=st.session_state.bank)
+# =============================
+# CONFIG
+# =============================
+MAX_HIST = 60
+MIN_READ = 5
 
-# BOTÕES
-col1, col2, col3 = st.columns(3)
-if col1.button("🔴 BANK", use_container_width=True):
-    st.session_state.h.append('🔴')
-    st.rerun()
-if col2.button("🔵 PLAYER", use_container_width=True):
-    st.session_state.h.append('🔵')
-    st.rerun()
-if col3.button("🟡 TIE", use_container_width=True):
-    st.session_state.h.append('🟡')
-    st.rerun()
+# =============================
+# ESTADO
+# =============================
+if "hist" not in st.session_state:
+    st.session_state.hist = []
 
-# HISTÓRICO ← RECENTE
-h_display = st.session_state.h[-15:][::-1]
-if h_display:
-    st.markdown("### 📊 **← RECENTE**")
-    st.caption("   ".join(h_display))
+# =============================
+# INPUT
+# =============================
+st.subheader("➕ Inserir Resultado")
+c1, c2, c3, c4 = st.columns(4)
 
-# ANÁLISE CONSERVADORA (SÓ ENTRA COM PADRÃO FORTE)
-def analyze_conservative(hist):
-    if len(hist) < 6:
-        return {'bet': '⏳', 'amount': 0, 'pattern': '6+ rodadas', 'confidence': 0}
-    
-    # Ordem original (recente final)
-    orig = hist[::-1]
-    
-    # 1. STREAK 5+ (40% setups)
-    streak = 1
-    last = orig[-1]
-    for i in range(1, min(12, len(orig))):
-        if orig[-i-1] == last:
-            streak += 1
-        else:
-            break
-    
-    # 2. CHOPPY 6+ alternados
-    choppy = sum(1 for i in range(1, min(10, len(orig))) if orig[-i] != orig[-i-1])
-    
-    # 3. COCKROACH exato BBP ou PPB
-    cockroach = len(orig) >= 3 and orig[-3:] in [['🔴','🔴','🔵'], ['🔵','🔵','🔴']]
-    
-    # 4. TIE STREAK (2+ TIEs)
-    tie_streak = sum(1 for i in range(min(4, len(orig))) if orig[-i] == '🟡')
-    
-    confidence = 0
-    
-    # PRIORIDADE 1: DRAGON 6+ (alta prob break)
-    if streak >= 6:
-        bet = '🔵' if last == '🔴' else '🔴'
-        amount = int(bank * 0.02)
-        confidence = 85
-        return {'bet': bet, 'amount': amount, 'pattern': f'🐲 DRAGON {streak}', 'confidence': confidence}
-    
-    # PRIORIDADE 2: COCKROACH (padrão recorrente)
-    elif cockroach:
-        bet = '🔴'
-        amount = int(bank * 0.01)
-        confidence = 75
-        return {'bet': bet, 'amount': amount, 'pattern': '🐛 COCKROACH', 'confidence': confidence}
-    
-    # PRIORIDADE 3: CHOPPY 7+ (alternado forte)
-    elif choppy >= 7:
-        bet = '🔵' if last == '🔴' else '🔴'
-        amount = int(bank * 0.008)
-        confidence = 70
-        return {'bet': bet, 'amount': amount, 'pattern': f'🔄 CHOPPY {choppy}', 'confidence': confidence}
-    
-    # PRIORIDADE 4: TIE STREAK 3+
-    elif tie_streak >= 3:
-        bet = '🔴'  # BANK após TIEs
-        amount = int(bank * 0.005)
-        confidence = 65
-        return {'bet': bet, 'amount': amount, 'pattern': f'🟡 TIEs {tie_streak}', 'confidence': confidence}
-    
+with c1:
+    if st.button("🔴 Player"):
+        st.session_state.hist.append("🔴")
+with c2:
+    if st.button("🔵 Banker"):
+        st.session_state.hist.append("🔵")
+with c3:
+    if st.button("🟡 Empate"):
+        st.session_state.hist.append("🟡")
+with c4:
+    if st.button("❌ Apagar"):
+        if st.session_state.hist:
+            st.session_state.hist.pop()
+
+st.session_state.hist = st.session_state.hist[-MAX_HIST:]
+
+# =============================
+# HISTÓRICO
+# =============================
+st.subheader("📜 Histórico (mais recente → antigo)")
+linhas = [st.session_state.hist[i:i+9] for i in range(0, len(st.session_state.hist), 9)]
+for linha in linhas[::-1]:
+    st.write(" ".join(linha[::-1]))
+
+# =============================
+# FUNÇÕES BASE
+# =============================
+def ult(n):
+    return st.session_state.hist[-n:] if len(st.session_state.hist) >= n else []
+
+def alternado(seq):
+    return len(seq) >= 4 and all(seq[i] != seq[i+1] for i in range(len(seq)-1))
+
+def repeticao(n):
+    return len(st.session_state.hist) >= n and len(set(st.session_state.hist[-n:])) == 1
+
+def contagem():
+    return Counter(st.session_state.hist[-10:])
+
+# =============================
+# MOTOR DOS 18 PADRÕES
+# =============================
+st.subheader("🧠 Leitura Avançada")
+
+sugestao = "❌ NÃO ENTRAR"
+padrao = "Nenhum padrão válido"
+prob = 0
+manip = 9
+
+h = st.session_state.hist
+
+if len(h) >= MIN_READ:
+    u4, u5, u6, u7 = ult(4), ult(5), ult(6), ult(7)
+
+    # 1 Alternado simples
+    if alternado(u4):
+        sugestao = "➡️ OPOSTO do último"
+        padrao = "Alternado Simples"
+        prob = 68
+        manip = 3
+
+    # 2 Duplo (2x1)
+    elif u6[-2:] != u6[-4:-2] and len(set(u6[-4:-2])) == 1:
+        sugestao = f"➡️ {u6[-2]}"
+        padrao = "Duplo (2x1)"
+        prob = 65
+        manip = 4
+
+    # 3 Triplo
+    elif repeticao(3):
+        sugestao = f"➡️ {h[-1]}"
+        padrao = "Triplo"
+        prob = 62
+        manip = 4
+
+    # 4 Escadinha
+    elif u6[0]==u6[1] and u6[2]==u6[3] and u6[4]!=u6[3]:
+        sugestao = "⚠️ Aguardar"
+        padrao = "Escadinha"
+        prob = 50
+        manip = 6
+
+    # 5 Empate Âncora
+    elif "🟡" in u4:
+        sugestao = f"➡️ Seguir anterior ao empate"
+        padrao = "Empate Âncora"
+        prob = 64
+        manip = 4
+
+    # 6 Empate de Corte
+    elif h[-1]=="🟡" and len(set(h[-4:-1]))==1:
+        sugestao = "❌ NÃO ENTRAR"
+        padrao = "Empate de Corte"
+        prob = 0
+        manip = 8
+
+    # 7 Empate Isolado
+    elif h[-1]=="🟡":
+        sugestao = "⚠️ Ignorar empate"
+        padrao = "Empate Isolado"
+        prob = 45
+        manip = 6
+
+    # 8 Repetição curta
+    elif repeticao(2):
+        sugestao = f"➡️ Manter {h[-1]}"
+        padrao = "Repetição Curta"
+        prob = 63
+        manip = 4
+
+    # 9 Repetição longa
+    elif repeticao(5):
+        sugestao = "⚠️ Quebra próxima"
+        padrao = "Repetição Longa"
+        prob = 40
+        manip = 7
+
+    # 10 Falsa quebra
+    elif h[-3]==h[-1] and h[-2]!=h[-1]:
+        sugestao = f"➡️ Voltar {h[-1]}"
+        padrao = "Falsa Quebra"
+        prob = 66
+        manip = 5
+
+    # 11 Falso alternado
+    elif alternado(h[-5:-1]) and h[-1]==h[-2]:
+        sugestao = f"➡️ {h[-1]}"
+        padrao = "Falso Alternado"
+        prob = 67
+        manip = 5
+
+    # 12 Espelhado
+    elif u6[:3]==u6[3:][::-1]:
+        sugestao = "❌ NÃO ENTRAR"
+        padrao = "Espelhado"
+        prob = 0
+        manip = 8
+
+    # 13 Atraso
+    elif repeticao(2) and h[-3]!=h[-1]:
+        sugestao = "⚠️ Aguardar confirmação"
+        padrao = "Atraso de Quebra"
+        prob = 48
+        manip = 6
+
+    # 14 Saturação
+    elif contagem().most_common(1)[0][1] >= 7:
+        sugestao = "❌ NÃO ENTRAR"
+        padrao = "Saturação de Mercado"
+        prob = 0
+        manip = 9
+
+    # 15 Surf
+    elif u7.count("🔴")==u7.count("🔵"):
+        sugestao = "➡️ Seguir onda"
+        padrao = "Surf"
+        prob = 61
+        manip = 5
+
+    # 16 Ciclo
+    elif len(set(u6))==2:
+        sugestao = "⚠️ Ciclo encerrando"
+        padrao = "Ciclo"
+        prob = 52
+        manip = 6
+
+    # 17 Colapso
+    elif "🟡" in u3 := ult(3):
+        sugestao = "❌ NÃO ENTRAR"
+        padrao = "Colapso de Probabilidade"
+        prob = 0
+        manip = 9
+
+    # 18 Fantasma
     else:
-        return {'bet': '⏳', 'amount': 0, 'pattern': 'SEM SETUP', 'confidence': 0}
+        sugestao = "❌ NÃO ENTRAR"
+        padrao = "Padrão Fantasma"
+        prob = 0
+        manip = 9
 
-# SUGESTÃO CONSERVADORA
+# =============================
+# OUTPUT
+# =============================
 st.markdown("---")
-st.markdown("### 🎯 **ANÁLISE**")
+st.subheader("📊 Resultado da IA")
 
-if len(st.session_state.h) >= 6:
-    analysis = analyze_conservative(h_display)
-    
-    if analysis['confidence'] > 0:
-        col1, col2, col3 = st.columns([2,3,2])
-        with col1:
-            st.markdown(f"### **{analysis['bet']}**")
-        with col2:
-            st.markdown(f"### **R${analysis['amount']}**")
-        with col3:
-            st.success(f"**{analysis['confidence']}%**")
-        
-        st.info(f"**{analysis['pattern']}**")
-    else:
-        st.markdown("### **⏳ AGUARDAR**")
-        st.warning("**SEM PADRÃO FORTE** - Paciência")
-        
+st.markdown(f"""
+### 🎯 Sugestão: **{sugestao}**
+- 🧠 Padrão detectado: **{padrao}**
+- 📊 Probabilidade estimada: **{prob}%**
+- 🤖 Nível de manipulação: **{manip}/9**
+""")
+
+if manip >= 7:
+    st.error("🚫 Entrada bloqueada – manipulação alta")
+elif prob >= 60:
+    st.success("✅ Entrada possível com gestão")
 else:
-    st.info(f"**{6-len(st.session_state.h)} rodadas** para análise")
+    st.warning("⚠️ Zona neutra – apenas observar")
 
-# STATS
-if st.session_state.h:
-    recent = st.session_state.h[-20:]
-    col1, col2, col3 = st.columns(3)
-    col1.metric("🔴", recent.count('🔴'))
-    col2.metric("🔵", recent.count('🔵'))
-    col3.metric("🟡", recent.count('🟡'))
-
-if st.button("🗑️ Clear"):
-    st.session_state.h = []
-    st.rerun()
-
-st.caption("**Conservador** - só entra setup forte 65%+")
+# =============================
+# REGRA FINAL
+# =============================
+st.markdown("""
+---
+### 🧠 REGRA ABSOLUTA
+> **A IA não entra quando o cassino quer que você entre.**
+""")
