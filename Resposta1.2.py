@@ -1,7 +1,10 @@
 import streamlit as st
 from collections import Counter
 
-st.set_page_config(page_title="🧠 Football Studio IA Avançada", layout="centered")
+# =============================
+# CONFIGURAÇÃO DA PÁGINA
+# =============================
+st.set_page_config(page_title="🧠 Football Studio IA", layout="centered")
 
 st.title("🎴 Football Studio – IA Avançada")
 st.caption("18 padrões reais | Probabilidade | Manipulação | Sem forçar entrada")
@@ -19,7 +22,7 @@ if "hist" not in st.session_state:
     st.session_state.hist = []
 
 # =============================
-# INPUT
+# INPUT DE RESULTADOS
 # =============================
 st.subheader("➕ Inserir Resultado")
 c1, c2, c3, c4 = st.columns(4)
@@ -41,7 +44,7 @@ with c4:
 st.session_state.hist = st.session_state.hist[-MAX_HIST:]
 
 # =============================
-# HISTÓRICO
+# HISTÓRICO VISUAL
 # =============================
 st.subheader("📜 Histórico (mais recente → antigo)")
 linhas = [st.session_state.hist[i:i+9] for i in range(0, len(st.session_state.hist), 9)]
@@ -49,7 +52,7 @@ for linha in linhas[::-1]:
     st.write(" ".join(linha[::-1]))
 
 # =============================
-# FUNÇÕES BASE
+# FUNÇÕES AUXILIARES
 # =============================
 def ult(n):
     return st.session_state.hist[-n:] if len(st.session_state.hist) >= n else []
@@ -76,9 +79,12 @@ manip = 9
 h = st.session_state.hist
 
 if len(h) >= MIN_READ:
-    u4, u5, u6, u7 = ult(4), ult(5), ult(6), ult(7)
+    u4 = ult(4)
+    u5 = ult(5)
+    u6 = ult(6)
+    u7 = ult(7)
 
-    # 1 Alternado simples
+    # 1 Alternado Simples
     if alternado(u4):
         sugestao = "➡️ OPOSTO do último"
         padrao = "Alternado Simples"
@@ -86,8 +92,8 @@ if len(h) >= MIN_READ:
         manip = 3
 
     # 2 Duplo (2x1)
-    elif u6[-2:] != u6[-4:-2] and len(set(u6[-4:-2])) == 1:
-        sugestao = f"➡️ {u6[-2]}"
+    elif len(u6) == 6 and u6[-4] == u6[-3] and u6[-2] != u6[-1]:
+        sugestao = f"➡️ {u6[-1]}"
         padrao = "Duplo (2x1)"
         prob = 65
         manip = 4
@@ -100,7 +106,7 @@ if len(h) >= MIN_READ:
         manip = 4
 
     # 4 Escadinha
-    elif u6[0]==u6[1] and u6[2]==u6[3] and u6[4]!=u6[3]:
+    elif len(u6) == 6 and u6[0]==u6[1] and u6[2]==u6[3] and u6[4]!=u6[3]:
         sugestao = "⚠️ Aguardar"
         padrao = "Escadinha"
         prob = 50
@@ -108,62 +114,62 @@ if len(h) >= MIN_READ:
 
     # 5 Empate Âncora
     elif "🟡" in u4:
-        sugestao = f"➡️ Seguir anterior ao empate"
+        sugestao = "➡️ Seguir cor anterior ao empate"
         padrao = "Empate Âncora"
         prob = 64
         manip = 4
 
     # 6 Empate de Corte
-    elif h[-1]=="🟡" and len(set(h[-4:-1]))==1:
+    elif h[-1] == "🟡" and len(set(h[-4:-1])) == 1:
         sugestao = "❌ NÃO ENTRAR"
         padrao = "Empate de Corte"
         prob = 0
         manip = 8
 
     # 7 Empate Isolado
-    elif h[-1]=="🟡":
+    elif h[-1] == "🟡":
         sugestao = "⚠️ Ignorar empate"
         padrao = "Empate Isolado"
         prob = 45
         manip = 6
 
-    # 8 Repetição curta
+    # 8 Repetição Curta
     elif repeticao(2):
         sugestao = f"➡️ Manter {h[-1]}"
         padrao = "Repetição Curta"
         prob = 63
         manip = 4
 
-    # 9 Repetição longa
+    # 9 Repetição Longa
     elif repeticao(5):
         sugestao = "⚠️ Quebra próxima"
         padrao = "Repetição Longa"
         prob = 40
         manip = 7
 
-    # 10 Falsa quebra
-    elif h[-3]==h[-1] and h[-2]!=h[-1]:
+    # 10 Falsa Quebra
+    elif len(h) >= 3 and h[-3] == h[-1] and h[-2] != h[-1]:
         sugestao = f"➡️ Voltar {h[-1]}"
         padrao = "Falsa Quebra"
         prob = 66
         manip = 5
 
-    # 11 Falso alternado
-    elif alternado(h[-5:-1]) and h[-1]==h[-2]:
+    # 11 Falso Alternado
+    elif alternado(h[-5:-1]) and h[-1] == h[-2]:
         sugestao = f"➡️ {h[-1]}"
         padrao = "Falso Alternado"
         prob = 67
         manip = 5
 
     # 12 Espelhado
-    elif u6[:3]==u6[3:][::-1]:
+    elif len(u6) == 6 and u6[:3] == u6[3:][::-1]:
         sugestao = "❌ NÃO ENTRAR"
         padrao = "Espelhado"
         prob = 0
         manip = 8
 
-    # 13 Atraso
-    elif repeticao(2) and h[-3]!=h[-1]:
+    # 13 Atraso de Quebra
+    elif repeticao(2) and h[-3] != h[-1]:
         sugestao = "⚠️ Aguardar confirmação"
         padrao = "Atraso de Quebra"
         prob = 48
@@ -177,35 +183,36 @@ if len(h) >= MIN_READ:
         manip = 9
 
     # 15 Surf
-    elif u7.count("🔴")==u7.count("🔵"):
+    elif u7.count("🔴") == u7.count("🔵"):
         sugestao = "➡️ Seguir onda"
         padrao = "Surf"
         prob = 61
         manip = 5
 
     # 16 Ciclo
-    elif len(set(u6))==2:
+    elif len(set(u6)) == 2:
         sugestao = "⚠️ Ciclo encerrando"
         padrao = "Ciclo"
         prob = 52
         manip = 6
 
-    # 17 Colapso
-    elif "🟡" in u3 := ult(3):
-        sugestao = "❌ NÃO ENTRAR"
-        padrao = "Colapso de Probabilidade"
-        prob = 0
-        manip = 9
-
-    # 18 Fantasma
+    # 17 Colapso de Probabilidade
     else:
-        sugestao = "❌ NÃO ENTRAR"
-        padrao = "Padrão Fantasma"
-        prob = 0
-        manip = 9
+        u3 = ult(3)
+        if "🟡" in u3:
+            sugestao = "❌ NÃO ENTRAR"
+            padrao = "Colapso de Probabilidade"
+            prob = 0
+            manip = 9
+        else:
+            # 18 Fantasma
+            sugestao = "❌ NÃO ENTRAR"
+            padrao = "Padrão Fantasma"
+            prob = 0
+            manip = 9
 
 # =============================
-# OUTPUT
+# RESULTADO FINAL
 # =============================
 st.markdown("---")
 st.subheader("📊 Resultado da IA")
@@ -225,10 +232,10 @@ else:
     st.warning("⚠️ Zona neutra – apenas observar")
 
 # =============================
-# REGRA FINAL
+# REGRA DE OURO
 # =============================
 st.markdown("""
 ---
 ### 🧠 REGRA ABSOLUTA
-> **A IA não entra quando o cassino quer que você entre.**
+> **Se o padrão precisa ser forçado, ele já acabou.**
 """)
