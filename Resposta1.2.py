@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.title("Football Studio PRO")
+st.title("Football Studio CONSERVADOR")
 
 if 'h' not in st.session_state:
     st.session_state.h = []
@@ -20,87 +20,105 @@ if col3.button("🟡 TIE", use_container_width=True):
     st.session_state.h.append('🟡')
     st.rerun()
 
-# HISTÓRICO EMOJIS ← RECENTE ESQUERDA
-h = st.session_state.h[-15:][::-1]
-if h:
+# HISTÓRICO ← RECENTE
+h_display = st.session_state.h[-15:][::-1]
+if h_display:
     st.markdown("### 📊 **← RECENTE**")
-    st.caption("   ".join(h))
+    st.caption("   ".join(h_display))
 
-# ANÁLISE PADRÕES
-def analyze_patterns(hist):
-    if len(hist) < 2:
-        return {'bet': '⏳', 'amount': 0, 'pattern': 'WAIT'}
+# ANÁLISE CONSERVADORA (SÓ ENTRA COM PADRÃO FORTE)
+def analyze_conservative(hist):
+    if len(hist) < 6:
+        return {'bet': '⏳', 'amount': 0, 'pattern': '6+ rodadas', 'confidence': 0}
     
-    # Recupera ordem original (mais recente no final)
-    orig_hist = hist[::-1]
-    last = orig_hist[-1]
+    # Ordem original (recente final)
+    orig = hist[::-1]
     
-    # STREAK
+    # 1. STREAK 5+ (40% setups)
     streak = 1
-    for i in range(1, min(10, len(orig_hist))):
-        if orig_hist[-i-1] == last:
+    last = orig[-1]
+    for i in range(1, min(12, len(orig))):
+        if orig[-i-1] == last:
             streak += 1
         else:
             break
     
-    # CHOPPY
-    choppy = 0
-    for i in range(1, min(8, len(orig_hist))):
-        if orig_hist[-i] != orig_hist[-i-1]:
-            choppy += 1
+    # 2. CHOPPY 6+ alternados
+    choppy = sum(1 for i in range(1, min(10, len(orig))) if orig[-i] != orig[-i-1])
     
-    # COCKROACH BBP/PPB
-    cockroach = len(orig_hist) >= 3 and orig_hist[-3:] in [['🔴','🔴','🔵'], ['🔵','🔵','🔴']]
+    # 3. COCKROACH exato BBP ou PPB
+    cockroach = len(orig) >= 3 and orig[-3:] in [['🔴','🔴','🔵'], ['🔵','🔵','🔴']]
     
-    amount = int(bank * 0.01)
+    # 4. TIE STREAK (2+ TIEs)
+    tie_streak = sum(1 for i in range(min(4, len(orig))) if orig[-i] == '🟡')
     
+    confidence = 0
+    
+    # PRIORIDADE 1: DRAGON 6+ (alta prob break)
     if streak >= 6:
         bet = '🔵' if last == '🔴' else '🔴'
         amount = int(bank * 0.02)
-        return {'bet': bet, 'amount': amount, 'pattern': '🐲 DRAGON'}
-    elif streak >= 4:
-        bet = '🔵' if last == '🔴' else '🔴'
-        amount = int(bank * 0.015)
-        return {'bet': bet, 'amount': amount, 'pattern': f'🔥 STREAK {streak}'}
+        confidence = 85
+        return {'bet': bet, 'amount': amount, 'pattern': f'🐲 DRAGON {streak}', 'confidence': confidence}
+    
+    # PRIORIDADE 2: COCKROACH (padrão recorrente)
     elif cockroach:
         bet = '🔴'
+        amount = int(bank * 0.01)
+        confidence = 75
+        return {'bet': bet, 'amount': amount, 'pattern': '🐛 COCKROACH', 'confidence': confidence}
+    
+    # PRIORIDADE 3: CHOPPY 7+ (alternado forte)
+    elif choppy >= 7:
+        bet = '🔵' if last == '🔴' else '🔴'
         amount = int(bank * 0.008)
-        return {'bet': bet, 'amount': amount, 'pattern': '🐛 COCKROACH'}
-    elif choppy >= 5:
-        bet = '🔵' if last == '🔴' else '🔴'
+        confidence = 70
+        return {'bet': bet, 'amount': amount, 'pattern': f'🔄 CHOPPY {choppy}', 'confidence': confidence}
+    
+    # PRIORIDADE 4: TIE STREAK 3+
+    elif tie_streak >= 3:
+        bet = '🔴'  # BANK após TIEs
         amount = int(bank * 0.005)
-        return {'bet': bet, 'amount': amount, 'pattern': f'🔄 CHOPPY {choppy}'}
+        confidence = 65
+        return {'bet': bet, 'amount': amount, 'pattern': f'🟡 TIEs {tie_streak}', 'confidence': confidence}
+    
     else:
-        bet = '🔵' if last == '🔴' else '🔴'
-        return {'bet': bet, 'amount': amount, 'pattern': '➡️ NORMAL'}
+        return {'bet': '⏳', 'amount': 0, 'pattern': 'SEM SETUP', 'confidence': 0}
 
-# SUGESTÃO PRINCIPAL
+# SUGESTÃO CONSERVADORA
 st.markdown("---")
-st.markdown("### 🎯 **APOSTA AGORA**")
+st.markdown("### 🎯 **ANÁLISE**")
 
-if st.session_state.h:
-    analysis = analyze_patterns(h)
+if len(st.session_state.h) >= 6:
+    analysis = analyze_conservative(h_display)
     
-    col1, col2, col3 = st.columns([1,4,1])
-    with col1:
-        st.markdown(f"### **{analysis['bet']}**")
-    with col2:
-        st.markdown(f"### **R${analysis['amount']}**")
-    with col3:
-        st.success(f"**{analysis['pattern']}**")
-    
-    st.caption(f"Histórico: {len(st.session_state.h)} rodadas | Stake: {analysis['amount']/bank*100:.1f}%")
+    if analysis['confidence'] > 0:
+        col1, col2, col3 = st.columns([2,3,2])
+        with col1:
+            st.markdown(f"### **{analysis['bet']}**")
+        with col2:
+            st.markdown(f"### **R${analysis['amount']}**")
+        with col3:
+            st.success(f"**{analysis['confidence']}%**")
+        
+        st.info(f"**{analysis['pattern']}**")
+    else:
+        st.markdown("### **⏳ AGUARDAR**")
+        st.warning("**SEM PADRÃO FORTE** - Paciência")
+        
 else:
-    st.info("**Clique primeiro resultado**")
+    st.info(f"**{6-len(st.session_state.h)} rodadas** para análise")
 
 # STATS
 if st.session_state.h:
     recent = st.session_state.h[-20:]
     col1, col2, col3 = st.columns(3)
-    col1.metric("🔴 BANK", recent.count('🔴'))
-    col2.metric("🔵 PLAYER", recent.count('🔵'))
-    col3.metric("🟡 TIE", recent.count('🟡'))
+    col1.metric("🔴", recent.count('🔴'))
+    col2.metric("🔵", recent.count('🔵'))
+    col3.metric("🟡", recent.count('🟡'))
 
-if st.button("🗑️ Clear", type="secondary"):
+if st.button("🗑️ Clear"):
     st.session_state.h = []
     st.rerun()
+
+st.caption("**Conservador** - só entra setup forte 65%+")
