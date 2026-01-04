@@ -1,56 +1,69 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="Football Flow Analyzer", layout="centered")
 
 st.title("💰 Football – Análise por Soma de Pagamentos")
-st.caption("Leitura financeira • Fluxo de pagamento • Anti-padrão")
+st.caption("Histórico visível • Fluxo financeiro • Anti-erro")
 
 # ---- SESSION ----
 if "dados" not in st.session_state:
     st.session_state.dados = []
 
 # ---- INPUT ----
-st.subheader("Inserir rodada")
+st.subheader("➕ Inserir rodada")
 
-c1, c2, c3 = st.columns(3)
-resultado = None
+resultado = st.radio(
+    "Resultado da rodada:",
+    ["🔴 BANK", "🔵 PLAYER", "🟡 EMPATE"],
+    horizontal=True
+)
 
-if c1.button("🔴 BANK"):
-    resultado = "🔴"
-if c2.button("🔵 PLAYER"):
-    resultado = "🔵"
-if c3.button("🟡 EMPATE"):
-    resultado = "🟡"
+valor = st.number_input(
+    "Valor pago (odd ou retorno):",
+    min_value=0.0,
+    step=0.01
+)
 
-valor = st.number_input("Valor pago nesta rodada (ex: 1.95)", min_value=0.0, step=0.01)
-
-if resultado and valor > 0:
-    st.session_state.dados.append((resultado, valor))
-    st.session_state.dados = st.session_state.dados[-40:]
+if st.button("Adicionar rodada"):
+    if valor > 0:
+        cor = resultado.split()[0]
+        st.session_state.dados.append({
+            "Resultado": cor,
+            "Valor": valor
+        })
+    else:
+        st.warning("Informe um valor válido.")
 
 # ---- HISTÓRICO ----
-st.subheader("📜 Histórico de Pagamentos")
-for r, v in st.session_state.dados[::-1]:
-    st.write(f"{r} → {v}")
+st.subheader("📜 Histórico de Rodadas")
+
+if st.session_state.dados:
+    df = pd.DataFrame(st.session_state.dados)
+    st.dataframe(df, use_container_width=True)
+
+    st.write("Visual:")
+    st.write(" ".join(df["Resultado"].tolist()))
+else:
+    st.info("Nenhuma rodada registrada ainda.")
 
 # ---- SOMA ----
-soma_red = sum(v for r, v in st.session_state.dados if r == "🔴")
-soma_blue = sum(v for r, v in st.session_state.dados if r == "🔵")
-
+soma_red = sum(d["Valor"] for d in st.session_state.dados if d["Resultado"] == "🔴")
+soma_blue = sum(d["Valor"] for d in st.session_state.dados if d["Resultado"] == "🔵")
 total = soma_red + soma_blue
 
 st.subheader("📊 Soma Financeira")
-st.write(f"🔴 Total pago BANK: **{soma_red:.2f}**")
-st.write(f"🔵 Total pago PLAYER: **{soma_blue:.2f}**")
+st.write(f"🔴 BANK pago: **{soma_red:.2f}**")
+st.write(f"🔵 PLAYER pago: **{soma_blue:.2f}**")
 
 # ---- ANÁLISE ----
 st.subheader("🧠 Análise de Fluxo")
 
-def analisar_fluxo(hist):
-    if len(hist) < 10:
-        return "🟡 OBSERVAR", "Histórico financeiro insuficiente", 0
+def analisar():
+    if len(st.session_state.dados) < 10:
+        return "🟡 OBSERVAR", "Histórico insuficiente", 0
 
-    if hist[-1][0] == "🟡":
+    if st.session_state.dados[-1]["Resultado"] == "🟡":
         return "🔴 PROIBIDO", "Empate recente (reset financeiro)", 0
 
     if total == 0:
@@ -59,15 +72,14 @@ def analisar_fluxo(hist):
     diff = abs(soma_red - soma_blue) / total * 100
 
     if diff < 20:
-        return "🟡 OBSERVAR", "Pagamento equilibrado (sem pressão)", int(diff)
+        return "🟡 OBSERVAR", "Fluxo equilibrado", int(diff)
 
     if soma_red > soma_blue:
-        return "🟢 ENTRAR 🔵", "BANK caro (cassino tende a compensar)", int(diff)
-
+        return "🟢 ENTRAR 🔵", "BANK está caro (tende a compensar)", int(diff)
     else:
-        return "🟢 ENTRAR 🔴", "PLAYER caro (cassino tende a compensar)", int(diff)
+        return "🟢 ENTRAR 🔴", "PLAYER está caro (tende a compensar)", int(diff)
 
-status, motivo, conf = analisar_fluxo(st.session_state.dados)
+status, motivo, conf = analisar()
 
 # ---- OUTPUT ----
 st.markdown(f"### Status: {status}")
@@ -78,4 +90,4 @@ if conf > 0:
     st.write(f"📈 Pressão financeira: {conf}%")
 
 st.divider()
-st.caption("⚠️ Sistema baseado em fluxo de pagamento. Não força entradas. Proteção máxima de banca.")
+st.caption("Sistema financeiro conservador • Não força entradas • Preserva banca")
